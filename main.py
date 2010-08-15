@@ -67,7 +67,7 @@ class GameHandler(BaseHandler):
         self.render('game')
 
 class SparklineHandler(BaseHandler):
-    DEFAULT_NUMBER_OF_DAYS = 59
+    DEFAULT_NUMBER_OF_DAYS = 29
     DEFAULT_WIDTH = 60
     DEFAULT_HEIGHT = 18
 
