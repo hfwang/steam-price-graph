@@ -24,4 +24,4 @@ def price(price):
         else:
             return '$%.2f' % price
     else:
-        return '?'
+        return '-'
