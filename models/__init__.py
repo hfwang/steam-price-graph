@@ -24,7 +24,7 @@ class SteamGame(db.Model):
 
     def get_current_price(self):
         if len(self.pickled_price_change_list_price):
-            return self.pickled_price_change_list_price[0]
+            return SteamGame._float_to_price(self.pickled_price_change_list_price[0])
         else:
             return None
 
@@ -48,7 +48,8 @@ class SteamGame(db.Model):
 
         now = long(time.time())
         self.pickled_price_change_list_date.insert(0, now)
-        self.pickled_price_change_list_price.insert(0, price)
+        self.pickled_price_change_list_price.insert(
+            0, SteamGame._price_to_float(price))
 
     current_price = property(get_current_price, set_current_price)
 
@@ -61,12 +62,29 @@ class SteamGame(db.Model):
 
     @property
     def price_change_list(self):
-        return zip(self.pickled_price_change_list_date, self.pickled_price_change_list_price)
+        return zip(
+            self.pickled_price_change_list_date,
+            [SteamGame._float_to_price(p) for p in self.pickled_price_change_list_price])
+
+    def to_steam_api(self):
+        return SteamApi.Game(
+            id=self.steam_id, name=self.name, price=self.current_price)
 
     @staticmethod
     def get_key_name(game_id):
         return str(game_id)
 
-    def to_steam_api(self):
-        return SteamApi.Game(
-            id=self.steam_id, name=self.name, price=self.current_price)
+    @staticmethod
+    def _price_to_float(price):
+        if price is None:
+            return -1.0
+        else:
+            return price
+
+    @staticmethod
+    def _float_to_price(f):
+        if f < 0:
+            return None
+        else:
+            return f
+

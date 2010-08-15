@@ -66,7 +66,7 @@ def get_games(page=1):
                 # price"
                 price = float(price.contents[-1][5:])
         else:
-            price = float(-1)
+            price = None
 
         metascore = select_first(game, '.search_metascore')
         if metascore and metascore.string:
