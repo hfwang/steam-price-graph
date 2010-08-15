@@ -18,6 +18,10 @@ h1 small.alt {
 table.games {
   margin-top: 0;
 }
+table.games td {
+  padding: 0;
+  vertical-align: middle;
+}
 table.games td.thumbnail {
   margin: 0;
   padding: 0;
@@ -30,9 +34,8 @@ table.games td.thumbnail img {
   margin: 0;
   padding: 0;
 }
-table.games td {
-  padding: 0;
-  vertical-align: middle;
+table.games td.sparkline {
+  width: 60px;
 }
 
 footer {

@@ -6,7 +6,7 @@
       <a href="/?page=${c.page - 1}">&laquo;</a> |
       <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
     </td>
-    <th>Title</th>
+    <th colspan="2">Title</th>
     <th>Current price</th>
     <th>Last changed</th>
   </tr></thead>
@@ -19,13 +19,16 @@
           ${game.name}<br />
           <a href="${game.url}">Store</a> | <a href="/games/${game.id}">Price graph</a>
         </td>
+        <td class="sparkline">
+          <img src="/game/${game.id}/sparkline" />
+        </td>
         <td>${h.price(game.price)}</td>
         <td>${h.days_since(game_model.last_changed)}
       </tr>
     % endfor
   </tbody>
   <tfoot><tr>
-    <th colspan="4">
+    <th colspan="5">
       <a href="/?page=${c.page - 1}">&laquo;</a> |
       <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
     </td>
