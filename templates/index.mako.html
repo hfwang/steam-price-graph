@@ -1,0 +1,33 @@
+<%inherit file="base.mako.html" />
+
+<table class="games">
+  <thead><tr>
+    <td>
+      <a href="/?page=${c.page - 1}">&laquo;</a> |
+      <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+    </td>
+    <th>Title</th>
+    <th>Current price</th>
+    <th>Last changed</th>
+  </tr></thead>
+  <tbody>
+    % for game_model in c.games:
+      <% game = game_model.to_steam_api() %>
+      <tr>
+        <td class="thumbnail"><img src="${game.thumbnail}" />
+        <td>
+          ${game.name}<br />
+          <a href="${game.url}">Store</a> | <a href="/games/${game.id}">Price graph</a>
+        </td>
+        <td>${h.price(game.price)}</td>
+        <td>${h.days_since(game_model.last_changed)}
+      </tr>
+    % endfor
+  </tbody>
+  <tfoot><tr>
+    <td colspan="4">
+      <a href="/?page=${c.page - 1}">&laquo;</a> |
+      <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+    </td>
+  </tr></tfoot>
+</table>

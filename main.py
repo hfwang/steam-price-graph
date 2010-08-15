@@ -3,104 +3,60 @@
 import math
 import datetime
 import time
+import os
+
+from google.appengine.api.labs import taskqueue
+from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp import util
+
+from templates import helpers
+from mako.lookup import TemplateLookup
+import models
 import SteamApi
 import webapp2
-from google.appengine.api.labs import taskqueue
-from google.appengine.ext import db
-from google.appengine.ext.webapp import util
-import relative_dates
 
 
-class SteamGame(db.Model):
-    name = db.StringProperty()
-    steam_id = db.StringProperty()
-    pickled_price_change_list_date = db.ListProperty(long)
-    pickled_price_change_list_price = db.ListProperty(float)
+class RenderMako(object):
+  def __init__(self, *args, **kwargs):
+    self._lookup = TemplateLookup(*args, **kwargs)
 
-    last_updated_on = db.DateTimeProperty(auto_now=True)
-    created_on = db.DateTimeProperty(auto_now_add=True)
+  def __getattr__(self, template_name):
+    template_name = '%s.mako.html' % template_name
+    return self._lookup.get_template(template_name)
 
-    def get_current_price(self):
-        if len(self.pickled_price_change_list_price):
-            return self.pickled_price_change_list_price[0]
-        else:
-            return None
 
-    def set_current_price(self, price):
-        def should_update(new_price, price_change_list):
-            if len(price_change_list):
-                current_price = price_change_list[0][1]
+class BaseHandler(webapp2.RequestHandler):
+    '''
+    Yet another request handler wrapper to add the right dash of
+    functionality. Sigh.
+    '''
+    renderer_ = RenderMako(directories=['templates'], format_exceptions=True)
 
-                if current_price is None and new_price is None:
-                    # Already know this has no price.
-                    return False
-                elif ((abs(price - current_price) < 0.01)):
-                    # Price didn't change
-                    return False
-                else:
-                    return True
-            else: # Need to write first entry
-                return True
-        if not should_update(price, self.price_change_list):
-            return
-
-        now = long(time.time())
-        self.pickled_price_change_list_date.insert(0, now)
-        self.pickled_price_change_list_price.insert(0, price)
-
-    current_price = property(get_current_price, set_current_price)
-
-    def get_price_change_list(self):
-        return zip(self.pickled_price_change_list_date, self.pickled_price_change_list_price)
-
-    price_change_list = property(get_price_change_list)
-
-    @staticmethod
-    def get_key_name(game_id):
-        return str(game_id)
-
-    def to_steam_api(self):
-        return SteamApi.Game(
-            id=self.steam_id, name=self.name, price=self.current_price)
-
-class IndexHandler(webapp2.RequestHandler):
-    def get(self):
-        self.response.out.write('<title>Steam Price Graph</title>')
-        self.response.out.write('''
-            <h1>Steam Price Graphs</h1>
-            Currently just letting data collect. Pretty graphs will be
-            forthcoming when the scraper has done its thing. Contact
-            steam-price-graphs at hsiufan dot porkbuns dot net if you have any
-            questions.<br /><br />
-        ''')
-        page = int(self.request.get('page', 1))
-        cursor = self.request.get('cursor', None)
-        games_query = SteamGame.all().order('name')
-        if cursor:
-            games_query.with_cursor(cursor)
-        games = games_query.fetch(100)
-
-        self.response.out.write('<table>')
-        self.response.out.write('<tr><th></th><th>Title</th><th>Price</th></tr>')
-
-        for game in games:
-            game = game.to_steam_api()
-            self.response.out.write('<tr>')
-            self.response.out.write('''
-                <td><img src="%s" /></td>
-                ''' % game.thumbnail)
-            self.response.out.write('''
-                <td>
-                  %s<br />
-                  <a href="%s">Store</a> | <a href="/games/%s">Price graph</a>
-                </td>''' % (game.name, game.url, game.id))
-            self.response.out.write('<td>$%s</td>' % game.price)
-            self.response.out.write('</tr>')
-        self.response.out.write('</table>')
+    def render(self, basename):
+        values = {'h': helpers, 'c': self}
         self.response.out.write(
-            '<a href="?page=%d&cursor=%s">Next</a>' % (page + 1, games_query.cursor()))
+            getattr(BaseHandler.renderer_, basename).render_unicode(**values))
 
-class GameHandler(webapp2.RequestHandler):
+
+class IndexHandler(BaseHandler):
+    PAGE_SIZE = 20
+
+    def get(self):
+        self.page = int(self.request.get('page', 1))
+        cursor = self.request.get('cursor', None)
+        self.games_query = models.SteamGame.all().order('-pickled_price_change_list_date')
+
+        offset = 0
+        if cursor:
+            self.games_query.with_cursor(cursor)
+        else:
+            offset = (self.page - 1) * IndexHandler.PAGE_SIZE
+        self.games = self.games_query.fetch(IndexHandler.PAGE_SIZE, offset=offset)
+
+        self.render('index')
+
+
+class GameHandler(BaseHandler):
     @staticmethod
     def format_datetime(dt):
         timestamp = time.mktime(dt.timetuple())
@@ -109,29 +65,12 @@ class GameHandler(webapp2.RequestHandler):
         return time_str, time_ago
 
     def get(self, steam_id):
-        game_model = SteamGame.get_by_key_name(SteamGame.get_key_name(steam_id))
-        game = game_model.to_steam_api()
-        self.response.out.write('<title>Steam Price Graph - %s</title>' % game.name)
-        self.response.out.write('<h1>%s</h1>' % game.name)
+        self.game_model = models.SteamGame.get_by_key_name(models.SteamGame.get_key_name(steam_id))
+        if not self.game_model:
+            self.abort(404)  # could not find game
+        self.game = self.game_model.to_steam_api()
 
-        time_str, time_ago = GameHandler.format_datetime(game_model.created_on)
-        self.response.out.write('First seen %s (%s)<br />' % (time_ago, time_str))
-
-        time_str, time_ago = GameHandler.format_datetime(game_model.last_updated_on)
-        self.response.out.write('Last updated %s (%s)<br />' % (time_ago, time_str))
-
-        self.response.out.write('<h2>Price changes</h2>')
-        self.response.out.write('<table>')
-        for price_change in game_model.price_change_list:
-            time_str, time_ago = GameHandler.format_datetime(
-                datetime.datetime.fromtimestamp(price_change[0]))
-
-            self.response.out.write('<tr>')
-            self.response.out.write('<td>%s</td>' % time_str)
-            self.response.out.write('<td>$%.2f</td>' % price_change[1])
-            self.response.out.write('<td>%s</td>' % time_ago)
-            self.response.out.write('</tr>')
-        self.response.out.write('</table>')
+        self.render('game')
 
 
 class WebHookHandler(webapp2.RequestHandler):
@@ -160,11 +99,11 @@ class WebHookHandler(webapp2.RequestHandler):
         games = SteamApi.get_games(page)
         for game in games:
             self.response.out.write('Starting: %s...' % game.name)
-            game_key_name = SteamGame.get_key_name(game.id)
+            game_key_name = models.SteamGame.get_key_name(game.id)
 
-            game_model = SteamGame.get_by_key_name(game_key_name)
+            game_model = models.SteamGame.get_by_key_name(game_key_name)
             if not game_model:
-                game_model = SteamGame(key_name=game_key_name)
+                game_model = models.SteamGame(key_name=game_key_name)
 
             game_model.steam_id = game.id
             game_model.name = game.name
