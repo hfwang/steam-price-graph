@@ -67,11 +67,16 @@ class GameHandler(BaseHandler):
         self.render('game')
 
 class SparklineHandler(BaseHandler):
-    DEFAULT_NUMBER_OF_DAYS = 60
+    DEFAULT_NUMBER_OF_DAYS = 59
     DEFAULT_WIDTH = 60
     DEFAULT_HEIGHT = 18
 
     def get(self, steam_id):
+        chart_type = self.request.get('type', 'ls')
+        chart_width = int(self.request.get('width', SparklineHandler.DEFAULT_WIDTH))
+        chart_height = int(self.request.get('height', SparklineHandler.DEFAULT_HEIGHT))
+        chart_days = int(self.request.get('days', SparklineHandler.DEFAULT_NUMBER_OF_DAYS))
+
         self.game_model = models.SteamGame.get_by_key_name(models.SteamGame.get_key_name(steam_id))
         if not self.game_model:
             self.abort(404)  # could not find game
@@ -83,7 +88,7 @@ class SparklineHandler(BaseHandler):
         i = 0
         now = long(time.time())
         values = []
-        for unused_day in xrange(0, SparklineHandler.DEFAULT_NUMBER_OF_DAYS):
+        for unused_day in xrange(0, chart_days):
             while now <= price_changes[i][0]:
                 i += 1
             value = price_changes[i][1]
@@ -92,19 +97,19 @@ class SparklineHandler(BaseHandler):
             values.append(value)
             now -= (60 * 60 * 24)
         values.reverse()
-        values.append(values[-1])
+        values.append(None)
         scale_max = 1
         if self.game_model.current_price is not None:
             scale_max = max(scale_max, int(self.game_model.current_price * 200))
         scale_max = max(scale_max, int(max(self.game_model.pickled_price_change_list_price) * 100))
 
-        graph = GChartWrapper.Sparkline(values, encoding='text')
-        graph.scale(0, scale_max)
+        graph = GChartWrapper.GChart(chart_type, values, encoding='text')
+        if any(values):
+            graph.scale(0, scale_max)
         graph.color('0077CC')
-        graph.size(
-            SparklineHandler.DEFAULT_WIDTH, SparklineHandler.DEFAULT_HEIGHT)
-        #graph.marker('B', 'E6F2FA', 0, 0, 0)
-        #graph.marker('o', 'FF0000', len(values) - 1, 5)
+        graph.size(chart_width, chart_height)
+        graph.marker('B', 'E6F2FA', 0, 0, 0)
+        graph.marker('o', '003399', 0, len(values) - 2, 4)
         graph.fill('bg', 's', '00000000')
         graph.line(1,0,0)
 
@@ -156,7 +161,7 @@ class WebHookHandler(webapp2.RequestHandler):
 
 application = webapp2.WSGIApplication(
     [('/', IndexHandler),
-     webapp2.Route('/game/<steam_id>/sparkline', SparklineHandler),
+     webapp2.Route('/games/<steam_id>/sparkline', SparklineHandler),
      webapp2.Route('/games/<steam_id>', GameHandler),
      webapp2.Route('/webhooks/<action>', WebHookHandler)],
     debug=True)

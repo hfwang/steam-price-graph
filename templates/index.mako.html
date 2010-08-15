@@ -20,7 +20,7 @@
           <a href="${game.url}">Store</a> | <a href="/games/${game.id}">Price graph</a>
         </td>
         <td class="sparkline">
-          <img src="/game/${game.id}/sparkline" />
+          <img src="/games/${game.id}/sparkline" />
         </td>
         <td>${h.price(game.price)}</td>
         <td>${h.days_since(game_model.last_changed)}
