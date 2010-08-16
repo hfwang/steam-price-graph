@@ -42,10 +42,14 @@ class BaseHandler(webapp2.RequestHandler):
 class IndexHandler(BaseHandler):
     PAGE_SIZE = 20
 
+    def head(self, *args, **kwargs):
+      self.get(*args, **kwargs)
+
     def get(self):
         self.page = int(self.request.get('page', 1))
         cursor = self.request.get('cursor', None)
-        self.games_query = models.SteamGame.all().order('-pickled_price_change_list_date')
+        self.games_query = models.SteamGame.all().order(
+          '-pickled_price_change_list_date')
 
         offset = 0
         if cursor:
@@ -58,8 +62,12 @@ class IndexHandler(BaseHandler):
 
 
 class GameHandler(BaseHandler):
+    def head(self, *args, **kwargs):
+      self.get(*args, **kwargs)
+
     def get(self, steam_id):
-        self.game_model = models.SteamGame.get_by_key_name(models.SteamGame.get_key_name(steam_id))
+        self.game_model = models.SteamGame.get_by_key_name(
+          models.SteamGame.get_key_name(steam_id))
         if not self.game_model:
             self.abort(404)  # could not find game
         self.game = self.game_model.to_steam_api()
