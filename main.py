@@ -134,7 +134,9 @@ class WebHookHandler(webapp2.RequestHandler):
     def update(self):
         number_of_pages = SteamApi.get_number_of_pages()
         for page in xrange(1, number_of_pages + 1):
-            taskqueue.add(url='/webhooks/update_page?page=%d' % page, method='GET')
+            task = taskqueue.Task(url='/webhooks/update_page?page=%d' % page,
+                                  method='GET')
+            task.add('updater-queue')
             self.response.out.write('...page %d<br>' % page)
         self.response.out.write('Enqueued %d pages' % number_of_pages)
 

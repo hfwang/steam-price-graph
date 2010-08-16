@@ -1,4 +1,4 @@
 cron:
 - description: initiates price update cycle
   url: /webhooks/update
-  schedule: every 6 hours
+  schedule: every 1 hours
