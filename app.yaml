@@ -19,6 +19,9 @@ handlers:
   script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
 
 # static handlers
+- url: /robots.txt
+  static_files: static/images/robots.txt
+  upload: static/images/robots.txt
 - url: /favicon.ico
   static_files: static/images/favicon.ico
   upload: static/images/favicon.ico
