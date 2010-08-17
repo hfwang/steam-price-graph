@@ -36,7 +36,9 @@ class SteamGame(db.Model):
                 if current_price is None and new_price is None:
                     # Already know this has no price.
                     return False
-                elif ((abs(price - current_price) < 0.01)):
+                elif (current_price is not None
+                      and new_price is not None
+                      and (abs(price - current_price) < 0.01)):
                     # Price didn't change
                     return False
                 else:
