@@ -49,7 +49,7 @@ class IndexHandler(BaseHandler):
         self.page = int(self.request.get('page', 1))
         cursor = self.request.get('cursor', None)
         self.games_query = models.SteamGame.all().order(
-          '-pickled_price_change_list_date')
+          '-price_last_changed')
 
         offset = 0
         if cursor:
@@ -162,6 +162,7 @@ class WebHookHandler(webapp2.RequestHandler):
             game_model.name = game.name
             game_model.current_price = game.price
             game_model.put()
+
             self.response.out.write('done -- ')
             self.response.out.write('%r' % game_model.price_change_list)
             self.response.out.write('<br>')

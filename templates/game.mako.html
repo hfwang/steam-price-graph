@@ -2,8 +2,10 @@
 
 First seen ${h.days_since(c.game_model.created_on_timestamp)}
 (${h.yyyymmdd(c.game_model.created_on_timestamp)})<br />
-Last updated ${h.days_since(c.game_model.last_updated_on_timestamp)}
-(${h.yyyymmdd(c.game_model.last_updated_on_timestamp)})
+Last seen ${h.days_since(c.game_model.last_updated_on_timestamp)}
+(${h.yyyymmdd(c.game_model.last_updated_on_timestamp)})<br />
+Last price change ${h.days_since(c.game_model.price_last_changed_timestamp)}
+(${h.yyyymmdd(c.game_model.price_last_changed_timestamp)})
 
 <table>
   <caption>

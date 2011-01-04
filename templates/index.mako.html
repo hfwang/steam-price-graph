@@ -23,7 +23,7 @@
           <img src="/games/${game.id}/sparkline" />
         </td>
         <td>${h.price(game.price)}</td>
-        <td>${h.days_since(game_model.last_changed)}
+        <td>${h.days_since(game_model.price_last_changed_timestamp)}
       </tr>
     % endfor
   </tbody>

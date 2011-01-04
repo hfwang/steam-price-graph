@@ -1,8 +1,11 @@
+import datetime
 import time
 from google.appengine.ext import db
-import SteamApi
 
-class SteamGame(db.Model):
+import SteamApi
+from models.properties import JsonProperty
+
+class SteamGame(Searchable, db.Model):
     '''
     Simple model that stores all that we care about for a given steam game.
     '''
@@ -10,6 +13,8 @@ class SteamGame(db.Model):
     steam_id = db.StringProperty()
     pickled_price_change_list_date = db.ListProperty(long)
     pickled_price_change_list_price = db.ListProperty(float)
+    price_change_list = JsonProperty(default=[])
+    price_last_changed = db.DateTimeProperty()
 
     last_updated_on = db.DateTimeProperty(auto_now=True)
     created_on = db.DateTimeProperty(auto_now_add=True)
@@ -22,51 +27,68 @@ class SteamGame(db.Model):
     def created_on_timestamp(self):
         return time.mktime(self.created_on.timetuple())
 
+    @property
+    def price_last_changed_timestamp(self):
+        return time.mktime(self.created_on.timetuple())
+
     def get_current_price(self):
-        if len(self.pickled_price_change_list_price):
+        if len(self.price_change_list):
+            return SteamGame._float_to_price(self.price_change_list[0][1])
+        elif hasattr(self, 'pickled_price_change_list_price') and \
+                len(self.pickled_price_change_list_price) > 0:
             return SteamGame._float_to_price(self.pickled_price_change_list_price[0])
         else:
             return None
 
     def set_current_price(self, price):
-        def should_update(new_price, price_change_list):
-            if len(price_change_list):
-                current_price = price_change_list[0][1]
+        def has_price_change_list(price_change_list):
+            return bool(len(price_change_list))
 
-                if current_price is None and new_price is None:
-                    # Already know this has no price.
-                    return False
-                elif (current_price is not None
-                      and new_price is not None
-                      and (abs(price - current_price) < 0.01)):
-                    # Price didn't change
-                    return False
-                else:
-                    return True
+        def has_price_changed(new_price, current_price):
+            if current_price is None and new_price is None:
+                # Already know this has no price.
+                return False
+            elif (current_price is not None
+                  and new_price is not None
+                  and (abs(price - current_price) < 0.01)):
+                # Price didn't change
+                return False
+            else:
+                return True
+
+        def should_update(new_price, current_price, price_change_list):
+            if has_price_change_list(price_change_list):
+                return has_price_changed(new_price, current_price)
             else: # Need to write first entry
                 return True
-        if not should_update(price, self.price_change_list):
+
+        if not should_update(price, self.current_price, self.price_change_list):
             return
 
+        price_change_list = []
+        if len(self.price_change_list):
+            price_change_list = self.price_change_list
+        elif hasattr(self, 'pickled_price_change_list_price') and \
+                len(self.pickled_price_change_list_price) > 0:
+            price_change_list = zip(
+                self.pickled_price_change_list_date,
+                [SteamGame._float_to_price(p) for p in self.pickled_price_change_list_price])
+
         now = long(time.time())
-        self.pickled_price_change_list_date.insert(0, now)
-        self.pickled_price_change_list_price.insert(
-            0, SteamGame._price_to_float(price))
+        # make a copy of the source. So that we don't mutate the default value
+        # of the field. Augh.
+        price_change_list = price_change_list[:]
+
+        # only change if price has changed. for now we want to set price change
+        # list and price last changed all the time to migrate forward from the
+        # old parallel list schema.
+        if has_price_changed(price, self.current_price):
+            price_change_list.insert(
+                0, [now, SteamGame._price_to_float(price)])
+        self.price_change_list = price_change_list
+        self.price_last_changed = datetime.datetime.fromtimestamp(self.price_change_list[0][0])
 
     current_price = property(get_current_price, set_current_price)
-
-    @property
-    def last_changed(self):
-        if len(self.pickled_price_change_list_date):
-            return self.pickled_price_change_list_date[0]
-        else:
-            return None
-
-    @property
-    def price_change_list(self):
-        return zip(
-            self.pickled_price_change_list_date,
-            [SteamGame._float_to_price(p) for p in self.pickled_price_change_list_price])
 
     def to_steam_api(self):
         return SteamApi.Game(
