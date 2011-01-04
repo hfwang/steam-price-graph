@@ -6,18 +6,11 @@ api_version: 1
 derived_file_type:
 - python_precompiled
 
-handlers:
+builtins:
+- appstats: on
+- remote_api: on
 
-# cool built in functionality
-- url: /admin/.*
-  script: $PYTHON_LIB/google/appengine/ext/admin
-  login: admin
-- url: /remote_api
-  script: $PYTHON_LIB/google/appengine/ext/remote_api/handler.py
-  login: admin
-- url: /stats.*
-  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
-  login: admin
+handlers:
 
 # static handlers
 - url: /robots.txt
