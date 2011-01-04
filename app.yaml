@@ -17,11 +17,12 @@ handlers:
   login: admin
 - url: /stats.*
   script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
+  login: admin
 
 # static handlers
 - url: /robots.txt
-  static_files: static/images/robots.txt
-  upload: static/images/robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
 - url: /favicon.ico
   static_files: static/images/favicon.ico
   upload: static/images/favicon.ico
