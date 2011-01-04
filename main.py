@@ -34,9 +34,9 @@ class BaseHandler(webapp2.RequestHandler):
     renderer_ = RenderMako(directories=['templates'], format_exceptions=True)
 
     def render(self, basename):
-        values = {'h': helpers, 'c': self}
-        self.response.out.write(
-            getattr(BaseHandler.renderer_, basename).render_unicode(**values))
+      values = {'h': helpers, 'c': self}
+      self.response.out.write(
+        getattr(BaseHandler.renderer_, basename).render_unicode(**values))
 
 
 class IndexHandler(BaseHandler):
@@ -48,15 +48,20 @@ class IndexHandler(BaseHandler):
     def get(self):
         self.page = int(self.request.get('page', 1))
         cursor = self.request.get('cursor', None)
-        self.games_query = models.SteamGame.all().order(
-          '-price_last_changed')
+        self.query = self.request.get('q', None)
 
-        offset = 0
-        if cursor:
-            self.games_query.with_cursor(cursor)
+        if self.query:
+          self.games = models.SteamGame.search(self.query)
         else:
+          self.games_query = models.SteamGame.all().order(
+            '-price_last_changed')
+
+          offset = 0
+          if cursor:
+            self.games_query.with_cursor(cursor)
+          else:
             offset = (self.page - 1) * IndexHandler.PAGE_SIZE
-        self.games = self.games_query.fetch(IndexHandler.PAGE_SIZE, offset=offset)
+          self.games = self.games_query.fetch(IndexHandler.PAGE_SIZE, offset=offset)
 
         self.render('index')
 
@@ -109,7 +114,8 @@ class SparklineHandler(BaseHandler):
         scale_max = 1
         if self.game_model.current_price is not None:
             scale_max = max(scale_max, int(self.game_model.current_price * 200))
-        scale_max = max(scale_max, int(max(self.game_model.pickled_price_change_list_price) * 100))
+        max_price = int(max([pair[1] for pair in self.game_model.price_change_list]) * 100)
+        scale_max = max(scale_max, max_price)
 
         graph = GChartWrapper.GChart(chart_type, values, encoding='text')
         if any(values):
@@ -162,6 +168,10 @@ class WebHookHandler(webapp2.RequestHandler):
             game_model.name = game.name
             game_model.current_price = game.price
             game_model.put()
+
+            # This results in unnecessary "full text index" churn, but CPU is
+            # cheap.
+            game_model.index()
 
             self.response.out.write('done -- ')
             self.response.out.write('%r' % game_model.price_change_list)

@@ -4,6 +4,7 @@ from google.appengine.ext import db
 
 import SteamApi
 from models.properties import JsonProperty
+from search import Searchable
 
 class SteamGame(Searchable, db.Model):
     '''
@@ -19,6 +20,10 @@ class SteamGame(Searchable, db.Model):
     last_updated_on = db.DateTimeProperty(auto_now=True)
     created_on = db.DateTimeProperty(auto_now_add=True)
 
+    INDEX_TITLE_FROM_PROP = 'name'
+    INDEX_ONLY = [ 'name' ]
+    INDEX_USES_MULTI_ENTITIES = False
+
     @property
     def last_updated_on_timestamp(self):
         return time.mktime(self.last_updated_on.timetuple())
@@ -29,7 +34,7 @@ class SteamGame(Searchable, db.Model):
 
     @property
     def price_last_changed_timestamp(self):
-        return time.mktime(self.created_on.timetuple())
+        return time.mktime(self.price_last_changed.timetuple())
 
     def get_current_price(self):
         if len(self.price_change_list):

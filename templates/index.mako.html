@@ -1,10 +1,21 @@
 <%inherit file="base.mako.html" />
 
+<form method="get" style="position: absolute; top: 0; right: 0; padding-top: 1em">
+    % if c.query:
+      <input type="text" name="q" value="${c.query}" style="width: 20em; display: inline" />
+    % else:
+      <input type="text" name="q" value="" style="width: 10em; display: inline" />
+    % endif
+  <button type="submit">Search</button>
+</form>
+
 <table class="games">
   <thead><tr>
     <td>
-      <a href="/?page=${c.page - 1}">&laquo;</a> |
-      <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+      % if hasattr(c, 'games_query'):
+        <a href="/?page=${c.page - 1}">&laquo;</a> |
+        <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+      % endif
     </td>
     <th colspan="2">Title</th>
     <th>Current price</th>
@@ -29,8 +40,10 @@
   </tbody>
   <tfoot><tr>
     <th colspan="5">
-      <a href="/?page=${c.page - 1}">&laquo;</a> |
-      <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+      % if hasattr(c, 'games_query'):
+        <a href="/?page=${c.page - 1}">&laquo;</a> |
+        <a href="/?page=${c.page + 1}&cursor=${c.games_query.cursor()}"> Next &raquo;</a>
+      % endif
     </td>
   </tr></tfoot>
 </table>
