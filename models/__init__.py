@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 from google.appengine.ext import db
 
@@ -77,21 +78,21 @@ class SteamGame(Searchable, db.Model):
                 len(self.pickled_price_change_list_price) > 0:
             price_change_list = zip(
                 self.pickled_price_change_list_date,
-                [SteamGame._float_to_price(p) for p in self.pickled_price_change_list_price])
+                [SteamGame._float_to_price(p) for p
+                 in self.pickled_price_change_list_price])
 
         now = long(time.time())
         # make a copy of the source. So that we don't mutate the default value
         # of the field. Augh.
         price_change_list = price_change_list[:]
 
-        # only change if price has changed. for now we want to set price change
-        # list and price last changed all the time to migrate forward from the
-        # old parallel list schema.
-        if has_price_changed(price, self.current_price):
-            price_change_list.insert(
-                0, [now, SteamGame._price_to_float(price)])
+        price_change_list.insert(
+            0, [now, SteamGame._price_to_float(price)])
+
+        # Update the denormalized "most recent" values.
         self.price_change_list = price_change_list
-        self.price_last_changed = datetime.datetime.fromtimestamp(self.price_change_list[0][0])
+        self.price_last_changed = datetime.datetime.fromtimestamp(
+            price_change_list[0][0])
 
     current_price = property(get_current_price, set_current_price)
 
