@@ -1,8 +1,10 @@
 from BeautifulSoup import BeautifulSoup
 from BeautifulSoup import NavigableString
 from soupselect import select
-import urllib
 
+import re
+import urllib
+import logging
 
 class Game(object):
     def __init__(self, id='0', name='', price=0.0, metascore=None):
@@ -15,7 +17,7 @@ class Game(object):
         lambda self:'http://cdn.steampowered.com/v/gfx/apps/%s/capsule_sm_120.jpg' % self.id)
 
     url = property(
-        lambda self: 'http://store.steampowered.com/app/%s/' % self.id)
+        lambda self: 'http://store.steampowered.com/app/%s/?cc=us' % self.id)
 
     def __str__(self):
         return '%s - %s' % (self.id, self.name)
@@ -25,7 +27,7 @@ class Game(object):
 
 
 def search_result_url(page=1):
-    return 'http://store.steampowered.com/search/?sort_by=Name&sort_order=ASC&category1=998&page=%d' % page
+    return 'http://store.steampowered.com/search/?sort_by=Name&sort_order=ASC&category1=998&page=%d&cc=us' % page
 
 
 def get_number_of_pages():
@@ -55,7 +57,13 @@ def get_games(page=1):
     soup = BeautifulSoup(urllib.urlopen(search_result_url(page)))
     games = select(soup, 'a.search_result_row')
     for game in games:
-        id = str(game['href'][34:-1])
+        href = str(game['href'])
+        if re.search('http://store.steampowered.com/app/(\\d+)/', href):
+            id = re.search('http://store.steampowered.com/app/(\\d+)/',
+                           href).group(1)
+        else:
+            logging.error("Error extracting ID, skipping")
+            continue
         name = inner_text(select(game, 'h4')[0])
         price = select_first(game, '.search_price')
         if price and price.contents:
@@ -64,7 +72,10 @@ def get_games(page=1):
             else:
                 # Grab the last node, which is either the price or the "reduced
                 # price"
-                price = float(price.contents[-1][5:])
+                try:
+                    price = float(price.contents[-1][5:])
+                except:
+                    logging.error("Price conversion error for %s: '%s'" % (name, price.contents[-1]))
         else:
             price = None
 
