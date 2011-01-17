@@ -142,6 +142,8 @@ class WebHookHandler(webapp2.RequestHandler):
             self.update()
         elif action == 'update_page':
             self.update_page(int(self.request.get('page')))
+        elif action == 'clear_apps_with_snr_token':
+            self.clear_apps_with_snr_token(bool(self.request.get('confirm_delete')))
         else:
             self.abort(404)
 
@@ -178,6 +180,20 @@ class WebHookHandler(webapp2.RequestHandler):
             self.response.out.write('<br>')
         self.response.out.write('<br>Done.')
         self.response.out.write('<br><a href="?page=%d">Next</a>' % (page + 1))
+
+    def clear_apps_with_snr_token(self, confirm_delete):
+        games = models.SteamGame.all(keys_only=True)
+        for game_key in games:
+          self.response.out.write('Found %s' % game_key.name())
+          if 'snr' in str(game_key.name()):
+              if confirm_delete:
+                  from google.appengine.ext import db
+                  self.response.out.write('... is deleted')
+                  db.delete(game_key)
+              else:
+                  self.response.out.write('... should be deleted')
+
+          self.response.out.write('<br />')
 
 
 application = webapp2.WSGIApplication(
