@@ -206,11 +206,14 @@ class WebHookHandler(webapp2.RequestHandler):
 
     def convert_none_values_for_prices(self, id_, page_size):
         def print_next_page(game):
+            if game is None:
+                return
+
             self.response.out.write('Next page %s' % game.key().name())
             self.response.out.write('''
-                <a href="/webhooks/convert_none_values_for_prices?id=%s">
-                    [Next Page &rsaquo;]</a>''' % game.key().name())
-            self.response.out.write('<br />')
+                <a href="/webhooks/convert_none_values_for_prices?id=%s&page_size=%d">
+                    [Next Page &rsaquo;]</a>''' % (game.key().name(), page_size))
+            self.response.out.write('<br /><br />')
 
         from google.appengine.api.datastore import Key
 
@@ -219,7 +222,9 @@ class WebHookHandler(webapp2.RequestHandler):
             games = games.filter("__key__ >=", Key.from_path('SteamGame', id_))
         games = games.fetch(page_size + 1)
 
-        print_next_page(games[page_size])
+        if len(games) > page_size:
+            print_next_page(games[page_size])
+
         for game in games[0:page_size]:
             self.response.out.write('Fixing %s (%s)<br>' % (game.name, game.steam_id))
             def fix_tuple(t):
@@ -227,7 +232,6 @@ class WebHookHandler(webapp2.RequestHandler):
             pcl = [fix_tuple(t) for t in game.price_change_list]
             game.price_change_list = pcl
             game.put()
-        print_next_page(games[page_size])
 
 
 application = webapp2.WSGIApplication(
