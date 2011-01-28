@@ -13,8 +13,6 @@ class SteamGame(Searchable, db.Model):
     '''
     name = db.StringProperty()
     steam_id = db.StringProperty()
-    pickled_price_change_list_date = db.ListProperty(long)
-    pickled_price_change_list_price = db.ListProperty(float)
     price_change_list = JsonProperty(default=[])
     price_last_changed = db.DateTimeProperty()
 
@@ -39,7 +37,7 @@ class SteamGame(Searchable, db.Model):
 
     def get_current_price(self):
         if len(self.price_change_list):
-            return SteamGame._float_to_price(self.price_change_list[0][1])
+            return self.price_change_list[0][1]
         elif hasattr(self, 'pickled_price_change_list_price') and \
                 len(self.pickled_price_change_list_price) > 0:
             return SteamGame._float_to_price(self.pickled_price_change_list_price[0])
@@ -87,7 +85,7 @@ class SteamGame(Searchable, db.Model):
         price_change_list = price_change_list[:]
 
         price_change_list.insert(
-            0, [now, SteamGame._price_to_float(price)])
+            0, [now, price])
 
         # Update the denormalized "most recent" values.
         self.price_change_list = price_change_list

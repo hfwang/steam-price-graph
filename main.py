@@ -114,7 +114,12 @@ class SparklineHandler(BaseHandler):
         scale_max = 1
         if self.game_model.current_price is not None:
             scale_max = max(scale_max, int(self.game_model.current_price * 200))
-        max_price = int(max([pair[1] for pair in self.game_model.price_change_list]) * 100)
+
+        max_price = 1
+        prices = [pair[1] for pair in self.game_model.price_change_list
+                  if pair[1] is not None]
+        if prices:
+            max_price = int(max(prices) * 100)
         scale_max = max(scale_max, max_price)
 
         graph = GChartWrapper.GChart(chart_type, values, encoding='text')
@@ -144,6 +149,10 @@ class WebHookHandler(webapp2.RequestHandler):
             self.update_page(int(self.request.get('page')))
         elif action == 'clear_apps_with_snr_token':
             self.clear_apps_with_snr_token(bool(self.request.get('confirm_delete')))
+        elif action == 'convert_none_values_for_prices':
+            self.convert_none_values_for_prices(
+                self.request.get('id', None),
+                int(self.request.get('page_size', 40)))
         else:
             self.abort(404)
 
@@ -194,6 +203,31 @@ class WebHookHandler(webapp2.RequestHandler):
                   self.response.out.write('... should be deleted')
 
           self.response.out.write('<br />')
+
+    def convert_none_values_for_prices(self, id_, page_size):
+        def print_next_page(game):
+            self.response.out.write('Next page %s' % game.key().name())
+            self.response.out.write('''
+                <a href="/webhooks/convert_none_values_for_prices?id=%s">
+                    [Next Page &rsaquo;]</a>''' % game.key().name())
+            self.response.out.write('<br />')
+
+        from google.appengine.api.datastore import Key
+
+        games = models.SteamGame.all()
+        if id_ is not None:
+            games = games.filter("__key__ >=", Key.from_path('SteamGame', id_))
+        games = games.fetch(page_size + 1)
+
+        print_next_page(games[page_size])
+        for game in games[0:page_size]:
+            self.response.out.write('Fixing %s (%s)<br>' % (game.name, game.steam_id))
+            def fix_tuple(t):
+                return (t[0], models.SteamGame._float_to_price(t[1]))
+            pcl = [fix_tuple(t) for t in game.price_change_list]
+            game.price_change_list = pcl
+            game.put()
+        print_next_page(games[page_size])
 
 
 application = webapp2.WSGIApplication(
