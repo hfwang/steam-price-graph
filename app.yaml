@@ -9,6 +9,7 @@ derived_file_type:
 builtins:
 - appstats: on
 - remote_api: on
+- datastore_admin: on
 
 handlers:
 
