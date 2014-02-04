@@ -67,15 +67,21 @@ def get_games(page=1):
         name = inner_text(select(game, 'h4')[0])
         price = select_first(game, '.search_price')
         if price and price.contents:
-            if price.contents[-1] == 'Free':
+            price = price.contents[-1].lower()
+
+            if price.find('free') != -1:
                 price = float(0)
-            else:
+            elif price.startswith('&#36;'):
                 # Grab the last node, which is either the price or the "reduced
                 # price"
                 try:
-                    price = float(price.contents[-1][5:])
+                    price = float(price[5:])
                 except:
-                    logging.error("Price conversion error for %s: '%s'" % (name, price.contents[-1]))
+                    logging.error("Price conversion error for %s: '%s'" % (name, price))
+                    price = None
+            else:
+                price = None
+                logging.error("Price parse error for %s: '%s'" % (name, price))
         else:
             price = None
 

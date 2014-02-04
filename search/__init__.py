@@ -1,26 +1,26 @@
 #!/usr/bin/env python
 #
 # The MIT License
-# 
+#
 # Copyright (c) 2009 William T. Katz
 # Website/Contact: http://www.billkatz.com
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to 
-# deal in the Software without restriction, including without limitation 
-# the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-# and/or sell copies of the Software, and to permit persons to whom the 
+# of this software and associated documentation files (the "Software"), to
+# deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
 # Software is furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
 """A simple full-text search system
@@ -105,7 +105,7 @@ PUNCTUATION_REGEX = re.compile('[' + re.escape(string.punctuation) + ']')
 # identical to a base index entity.
 class SearchIndex(db.Model):
     """Holds full text indexing on an entity.
-    
+
     This model is used by the Searchable mix-in to hold full text
     indexes of a parent entity.
     """
@@ -115,7 +115,6 @@ class SearchIndex(db.Model):
         title = key.kind() + ' ' + str(key.id_or_name())
         uniq_key = title + KEY_NAME_DELIMITER + str(index_num)
         if hasattr(parent, 'INDEX_TITLE_FROM_PROP'):
-            logging.debug("Getting key name from property '%s'", parent.INDEX_TITLE_FROM_PROP)
             if hasattr(parent, parent.INDEX_TITLE_FROM_PROP):
                 title = getattr(parent, parent.INDEX_TITLE_FROM_PROP) or title
         return uniq_key + KEY_NAME_DELIMITER + title
@@ -140,7 +139,7 @@ class SearchIndex(db.Model):
     def put_index(cls, parent, phrases, index_num=1):
         parent_key = parent.key()
         args = {'key_name': cls.get_index_key_name(parent, index_num),
-                'parent': parent_key, 'parent_kind': parent_key.kind(), 
+                'parent': parent_key, 'parent_kind': parent_key.kind(),
                 'phrases': phrases }
         return cls(**args).put()
 
@@ -159,9 +158,9 @@ class StemmedIndex(SearchIndex):
 
 class Searchable(object):
     """A class that supports full text indexing and search on entities.
-    
+
     Add this class to your model's inheritance declaration like this:
-    
+
         class Page(Searchable, db.Model):
             title = db.StringProperty()
             author_name = db.StringProperty()
@@ -178,7 +177,7 @@ class Searchable(object):
 
     You can declare a string property to be stowed in index key names by
     using the INDEX_TITLE_FROM_PROP variable.  This allows you to retrieve
-    useful labels on key-only searches without doing a get() on the whole 
+    useful labels on key-only searches without doing a get() on the whole
     entity.
 
     Defaults are for searches to use stemming, multiple index entities,
@@ -212,7 +211,7 @@ class Searchable(object):
     Note that a url must be included that corresponds with the url mapped
     to search.LiteralIndexing controller.
 
-    You can limit the properties indexed by passing in a list of 
+    You can limit the properties indexed by passing in a list of
     property names:
 
         myPage.enqueue_indexing(url='/foo', only_index=['content'])
@@ -254,18 +253,18 @@ class Searchable(object):
     INDEX_USES_MULTI_ENTITIES = True
 
     @staticmethod
-    def full_text_search(phrase, limit=10, 
-                         kind=None, 
+    def full_text_search(phrase, limit=10,
+                         kind=None,
                          stemming=INDEX_STEMMING,
                          multi_word_literal=INDEX_MULTI_WORD):
         """Queries search indices for phrases using a merge-join.
-        
+
         Args:
             phrase: String.  Search phrase.
             kind: String.  Returned keys/entities are restricted to this kind.
 
         Returns:
-            A list of (key, title) tuples corresponding to the indexed entities.  
+            A list of (key, title) tuples corresponding to the indexed entities.
             Multi-word literal matches are returned first.
 
         TODO -- Should provide feedback if input search phrase has stop words, etc.
@@ -342,14 +341,14 @@ class Searchable(object):
 
     @classmethod
     def get_search_phraseset(cls, text):
-        """Returns set of phrases, including two and three adjacent word phrases 
+        """Returns set of phrases, including two and three adjacent word phrases
            not spanning punctuation or stop words.
 
         Args:
             text: String with punctuation.
 
         Returns:
-            A set of search terms that aren't stop words and meet length 
+            A set of search terms that aren't stop words and meet length
             requirement.  Set includes phrases of adjacent words that
             aren't stop words.  (Stop words are allowed in middle of three-word
             phrases like "Statue of Liberty".)
@@ -400,7 +399,7 @@ class Searchable(object):
     @classmethod
     def search(cls, phrase, limit=10, keys_only=False):
         """Queries search indices for phrases using a merge-join.
-        
+
         Use of this class method lets you easily restrict searches to a kind
         and retrieve entities or keys.
 
@@ -408,14 +407,14 @@ class Searchable(object):
             phrase: Search phrase (string)
             limit: Number of entities or keys to return.
             keys_only: If True, return only keys with title of parent entity.
-        
+
         Returns:
             A list.  If keys_only is True, the list holds (key, title) tuples.
             If keys_only is False, the list holds Model instances.
         """
         key_list = Searchable.full_text_search(
                         phrase, limit=limit, kind=cls.kind(),
-                        stemming=cls.INDEX_STEMMING, 
+                        stemming=cls.INDEX_STEMMING,
                         multi_word_literal=cls.INDEX_MULTI_WORD)
         if keys_only:
             logging.debug("key_list: %s", key_list)
@@ -526,7 +525,7 @@ class Searchable(object):
 
     def enqueue_indexing(self, url, only_index=None):
         """Adds an indexing task to the default task queue.
-        
+
         Args:
             url: String. The url associated with LiteralIndexing handler.
             only_index: List of strings.  Restricts indexing to these prop names.

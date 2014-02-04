@@ -7,17 +7,18 @@ import SteamApi
 from models.properties import JsonProperty
 from search import Searchable
 
+
 class SteamGame(Searchable, db.Model):
     '''
     Simple model that stores all that we care about for a given steam game.
     '''
-    name = db.StringProperty()
-    steam_id = db.StringProperty()
+    name = db.StringProperty(indexed=False)
+    steam_id = db.StringProperty(indexed=False)
     price_change_list = JsonProperty(default=[])
     price_last_changed = db.DateTimeProperty()
 
-    last_updated_on = db.DateTimeProperty(auto_now=True)
-    created_on = db.DateTimeProperty(auto_now_add=True)
+    last_updated_on = db.DateTimeProperty(auto_now=True, indexed=False)
+    created_on = db.DateTimeProperty(auto_now_add=True, indexed=False)
 
     INDEX_TITLE_FROM_PROP = 'name'
     INDEX_ONLY = [ 'name' ]
@@ -38,9 +39,6 @@ class SteamGame(Searchable, db.Model):
     def get_current_price(self):
         if len(self.price_change_list):
             return self.price_change_list[0][1]
-        elif hasattr(self, 'pickled_price_change_list_price') and \
-                len(self.pickled_price_change_list_price) > 0:
-            return SteamGame._float_to_price(self.pickled_price_change_list_price[0])
         else:
             return None
 
@@ -72,12 +70,6 @@ class SteamGame(Searchable, db.Model):
         price_change_list = []
         if len(self.price_change_list):
             price_change_list = self.price_change_list
-        elif hasattr(self, 'pickled_price_change_list_price') and \
-                len(self.pickled_price_change_list_price) > 0:
-            price_change_list = zip(
-                self.pickled_price_change_list_date,
-                [SteamGame._float_to_price(p) for p
-                 in self.pickled_price_change_list_price])
 
         now = long(time.time())
         # make a copy of the source. So that we don't mutate the default value
